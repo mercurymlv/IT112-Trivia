@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+
+{% block title %}Trivia Time!{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mb-4">Hello, {{ username | title }}! Let's Play Trivia 🎉</h1>
+    <p>Answer the questions below:</p>
+
+    {{ username }}
+
+</div>
+{% endblock %}

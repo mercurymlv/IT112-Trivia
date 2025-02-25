@@ -1,0 +1,20 @@
+# Python-related
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environment
+venv/
+env/
+
+# Flask secret key (if stored in a file)
+instance/
+
+# Ignore VS Code settings (if using VS Code)
+.vscode/
+
+# Ignore environment variables (if using a .env file)
+.env
+
+# Ignore compiled files
+*.log
