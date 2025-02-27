@@ -18,3 +18,8 @@ instance/
 
 # Ignore compiled files
 *.log
+
+*.bkp
+
+# don't backup database files - change too freq
+*.db

@@ -1,0 +1,32 @@
+import sqlite3
+
+# create the db for the app
+def init_db():
+    conn = sqlite3.connect('trivia.db')
+    cursor = conn.cursor()
+
+    # Create User table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS User (
+            user_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL
+        )
+    ''')
+
+    # Create Demographics table
+    # DATE is YYYY-MM-DD
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS Demographics (
+            demo_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            dob DATE,
+            gender TEXT,
+            FOREIGN KEY (user_id) REFERENCES User (user_id)
+        )
+    ''')
+
+    conn.commit()  # Commit the changes
+    conn.close()   # Close the connection
+
+init_db()

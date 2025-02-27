@@ -2,10 +2,13 @@ from flask import Flask, render_template, request, redirect, url_for
 from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField, DateField, EmailField, SelectField, PasswordField
 from wtforms.validators import DataRequired, Length, Email, EqualTo, Optional
+from datetime import date
 import random
 import secrets
 from flask import session
 import json
+import sqlite3
+
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = secrets.token_hex(16)
@@ -15,10 +18,10 @@ num_questions = 3
 # user form for WTF
 class UserSetupForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired(), Length(min=1, max=40)])
-    email = EmailField('Email', validators=[DataRequired(), Email()])
-    password = PasswordField('Password', validators=[DataRequired()])
-    password_confirm = PasswordField('Confirm Password', validators=[DataRequired(), EqualTo('password', message='Passwords must match')])
-    userdob = DateField('Date of Birth', validators=[Optional()])
+    # email = EmailField('Email', validators=[DataRequired(), Email()])
+    # password = PasswordField('Password', validators=[DataRequired()])
+    # password_confirm = PasswordField('Confirm Password', validators=[DataRequired(), EqualTo('password', message='Passwords must match')])
+    userdob = DateField('Date of Birth', validators=[Optional()], default=date(2000, 1, 1))
     gender = SelectField('Gender', choices=[('M', 'Male'), ('F', 'Female'), ('NB', 'Non-Binary'), ('O', 'Other')], validators=[Optional()])
     submit = SubmitField('Let’s Play Some Trivia!')
 
