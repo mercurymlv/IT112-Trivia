@@ -26,6 +26,19 @@ def init_db():
         )
     ''')
 
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS Questions (
+            quest_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            quest_type TEXT,
+            quest_text TEXT,
+            quest_ans TEXT,
+            quest_mc TEXT,  -- list?
+            verified INTEGER,  -- 0 or 1, sqlite doesn't have boolean
+            sub_user INTEGER,
+            sub_date DATE
+        )
+    ''')
+
     conn.commit()  # Commit the changes
     conn.close()   # Close the connection
 

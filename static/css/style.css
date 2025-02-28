@@ -1,0 +1,4 @@
+.form-check-input {
+    accent-color: black; /* Makes the radio buttons dark */
+    transform: scale(1.2); /* Slightly enlarges them */
+  }

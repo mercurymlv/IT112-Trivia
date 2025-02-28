@@ -19,6 +19,7 @@ instance/
 # Ignore compiled files
 *.log
 
+# Draw.io backup
 *.bkp
 
 # don't backup database files - change too freq
