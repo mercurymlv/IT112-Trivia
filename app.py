@@ -10,6 +10,7 @@ import json
 import sqlite3
 
 
+
 app = Flask(__name__)
 app.config['SECRET_KEY'] = secrets.token_hex(16)
 num_questions = 3
@@ -58,6 +59,13 @@ class TriviaForm(FlaskForm):
     question_3 = RadioField('Question 3', choices=[], validators=[DataRequired()])
     submit = SubmitField('Submit Answers')
 
+def format_text(text):
+    """ Convert text to sentence case. """
+    return text.capitalize()
+
+def format_options(options):
+    """ Convert list of MC options to title case. """
+    return [opt.title() for opt in options]
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
@@ -87,7 +95,6 @@ def index():
 
         # generate the questions and store in session
         session['selected_questions'] = get_random_questions()
-        print(load_questions())
 
         return redirect(url_for('trivia'))  # No need for URL params now
 
@@ -103,6 +110,11 @@ def trivia():
     selected_questions = session['selected_questions']
 
     form = TriviaForm()
+
+    for i in range(3):
+        if selected_questions[i]['quest_type'] == 'mc':
+            random.shuffle(selected_questions[i]['options'])
+
 
     # Manually assign question text and choices
     form.question_1.label.text = selected_questions[0]['quest_text']
@@ -129,32 +141,89 @@ def trivia():
 
 @app.route('/results')
 def results():
-    questions = session.get('selected_questions', [])
-    username = session.get('username', 'Guest')
-    
-    # Calculate score or whatever logic you need here
-    score = 3
-    
-    return render_template('results.html', username=username, score=score, questions=questions)
+    if 'selected_questions' not in session or 'user_answers' not in session:
+        return redirect(url_for('index'))  # Prevent errors if session data is missing
 
+    username = session['username']
+    selected_questions = session['selected_questions']
+    user_answers = session['user_answers']
+
+    score = 0
+    results_data = []  # Store each question, correct answer, and user answer
+
+    # Loop through the selected questions to compare answers
+    for i, question in enumerate(selected_questions, start=1):
+        question_key = f'question_{i}'
+        correct_answer = question['quest_ans']
+        user_answer = user_answers.get(question_key, '')
+
+        # Check if the answer is correct
+        is_correct = user_answer == correct_answer
+        if is_correct:
+            score += 1
+
+        # Store question data for display
+        results_data.append({
+            'question_text': question['quest_text'],
+            'correct_answer': correct_answer,
+            'user_answer': user_answer,
+            'is_correct': is_correct
+        })
+
+    return render_template('results.html', username=username, score=score, total=len(selected_questions), results_data=results_data)
 
 
 @app.route('/contribute', methods=['GET', 'POST'])
 def contribute():
+    if 'username' not in session:
+        return redirect(url_for('index'))  # Force login before submitting questions
+
+    conn = sqlite3.connect('trivia.db')
+    cursor = conn.cursor()
+
+    # Get user ID based on username stored in session
+    cursor.execute('SELECT user_id FROM User WHERE username = ?', (session['username'],))
+    user_row = cursor.fetchone()
+    if not user_row:
+        return redirect(url_for('index'))  # If user not found, clear session
+    sub_user = user_row[0]
+
     if request.method == 'POST':
-        new_question = request.form['question']
-        new_answer = request.form['answer']
+        question_type = request.form['question_type']
+        question_text = format_text(request.form['question'])
         
-        # Add to the JSON file
-        questions = load_questions()
-        questions.append({"question": new_question, "answer": new_answer})
-        
-        with open('questions.json', 'w') as file:
-            json.dump(questions, file, indent=4)
-        
-        return render_template('contribute.html', message="Question added successfully!")
-    
+        if question_type == 'tf':
+            correct_answer = request.form['correct_answer']
+            options = json.dumps(["TRUE", "FALSE"])  # Store as JSON
+        else:
+            options = format_options([
+                request.form['option1'],
+                request.form['option2'],
+                request.form['option3'],
+                request.form['option4']
+            ])
+            correct_answer = request.form['correct_answer']
+            options = json.dumps(options)  # Convert list to JSON
+
+        # Insert into database
+        cursor.execute('''
+            INSERT INTO Questions (quest_type, quest_text, quest_ans, options, verified, sub_user, sub_date) 
+            VALUES (?, ?, ?, ?, 0, ?, CURRENT_TIMESTAMP)
+        ''', (question_type, question_text, correct_answer, options, sub_user))
+        conn.commit()
+        conn.close()
+
+        return redirect(url_for('sub_confirmation'))
+
     return render_template('contribute.html')
+
+
+
+
+@app.route('/sub_confirmation')
+def sub_confirmation():
+    return render_template('sub_confirmation.html')
+
 
 if __name__ == '__main__':
     app.run(debug=True)

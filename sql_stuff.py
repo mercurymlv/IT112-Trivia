@@ -18,18 +18,17 @@ cursor = conn.cursor()
 
 # conn.commit()  # Commit the changes
 
-# cursor.execute("UPDATE User SET username='Johnny Boy' WHERE user_id=2")
+# cursor.execute("UPDATE Questions SET quest_text='The first president to live in the White House was' WHERE quest_id=20")
 
-# cursor.execute("DELETE FROM User WHERE user_id=3")
+cursor.execute("DELETE FROM Questions WHERE quest_id=20")
 
 # conn.commit()
 
-cursor.execute('ALTER TABLE Questions RENAME COLUMN quest_mc TO options;')
 
-cursor.execute('SELECT * FROM User u left join Demographics d on u.user_id=d.user_id')
-users = cursor.fetchall()
-for user in users:
-    print(user)
+cursor.execute('SELECT * FROM questions')
+questions = cursor.fetchall()
+for q in questions:
+    print(q)
 
 
 conn.close()   # Close the conn

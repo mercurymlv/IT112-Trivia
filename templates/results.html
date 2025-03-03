@@ -1,11 +1,28 @@
 {% extends "base.html" %}
+{% block title %}Trivia! - Results{% endblock %}
 
 {% block content %}
     <div class="container">
         <h1>Trivia Results for {{ username | title }}</h1>
 
         <h3>Your Answers:</h3>
+        <h2>Your Score: {{ score }} / {{ total }}</h2>
 
+        {% for result in results_data %}
+        <div class="card mb-3 p-3 {% if result.is_correct %}bg-success-subtle{% else %}bg-danger-subtle{% endif %}">
+            <h4>{{ result.question_text }}</h4>
+            <p><strong>Your Answer:</strong> {{ result.user_answer }}</p>
+            <p><strong>Correct Answer:</strong> {{ result.correct_answer }}</p>
+            {% if result.is_correct %}
+                <p class="text-success"><strong>✅ Correct!</strong></p>
+            {% else %}
+                <p class="text-danger"><strong>❌ Incorrect.</strong></p>
+            {% endif %}
+        </div>
+        {% endfor %}
+        
+        <a href="{{ url_for('index') }}" class="btn btn-primary mt-3">Play Again</a>
+        
 
     </div>
 {% endblock %}

@@ -8,16 +8,45 @@
     <p>If you have a trivia question, submit it here!</p>
 
     <form action="/contribute" method="POST" class="mx-auto mt-4 p-4 border rounded shadow-sm bg-light" style="max-width: 400px;">
+        <!-- Question Type Selection -->
+        <div class="mb-3">
+            <label for="question_type" class="form-label"><i class="bi bi-list-task pe-2"></i> Question Type</label>
+            <select id="question_type" name="question_type" class="form-select" required onchange="toggleFields()">
+                <option value="mc">Multiple Choice</option>
+                <option value="tf">True/False</option>
+            </select>
+        </div>
+
+        <!-- Question Text -->
         <div class="mb-3">
             <label for="question" class="form-label"><i class="bi bi-pencil-square pe-2"></i> Your Question</label>
             <input type="text" id="question" name="question" class="form-control" placeholder="Enter your question" required>
         </div>
 
-        <div class="mb-3">
-            <label for="answer" class="form-label"><i class="bi bi-pencil pe-2"></i> Your Answer</label>
-            <input type="text" id="answer" name="answer" class="form-control" placeholder="Enter the answer" required>
+        <!-- Multiple Choice Options (Hidden by Default for T/F) -->
+        <div id="mc_options">
+            <div class="mb-3">
+                <label class="form-label"><i class="bi bi-card-list pe-2"></i> Enter Choices</label>
+                <input type="text" name="option1" class="form-control mb-2" placeholder="Option 1" required>
+                <input type="text" name="option2" class="form-control mb-2" placeholder="Option 2" required>
+                <input type="text" name="option3" class="form-control mb-2" placeholder="Option 3" required>
+                <input type="text" name="option4" class="form-control mb-2" placeholder="Option 4" required>
+            </div>
         </div>
 
+        <!-- Correct Answer Selection -->
+        <div class="mb-3">
+            <label for="correct_answer" class="form-label"><i class="bi bi-check pe-2"></i> Correct Answer</label>
+            <select id="correct_answer" name="correct_answer" class="form-select" required>
+                <!-- Default MC Options (will be changed via JS for T/F) -->
+                <option value="option1">Option 1</option>
+                <option value="option2">Option 2</option>
+                <option value="option3">Option 3</option>
+                <option value="option4">Option 4</option>
+            </select>
+        </div>
+
+        <!-- Submit Button -->
         <button type="submit" class="btn btn-primary w-100">
             <i class="bi bi-check-circle pe-2"></i> Submit Question
         </button>
@@ -27,4 +56,31 @@
     <div class="mt-4 alert alert-success">{{ message }}</div>
     {% endif %}
 </div>
+
+<script>
+    function toggleFields() {
+        let questionType = document.getElementById("question_type").value;
+        let mcOptions = document.getElementById("mc_options");
+        let correctAnswer = document.getElementById("correct_answer");
+
+        if (questionType === "tf") {
+            mcOptions.style.display = "none"; // Hide MC options
+            correctAnswer.innerHTML = `
+                <option value="TRUE">TRUE</option>
+                <option value="FALSE">FALSE</option>
+            `; // Set only TRUE/FALSE options
+        } else {
+            mcOptions.style.display = "block"; // Show MC options
+            correctAnswer.innerHTML = `
+                <option value="option1">Option 1</option>
+                <option value="option2">Option 2</option>
+                <option value="option3">Option 3</option>
+                <option value="option4">Option 4</option>
+            `; // Restore MC options
+        }
+    }
+
+    // Initialize fields on page load
+    toggleFields();
+</script>
 {% endblock %}

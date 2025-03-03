@@ -32,7 +32,7 @@ def init_db():
             quest_type TEXT,
             quest_text TEXT,
             quest_ans TEXT,
-            quest_mc TEXT,  -- list?
+            options TEXT,  -- store as JSON
             verified INTEGER,  -- 0 or 1, sqlite doesn't have boolean
             sub_user INTEGER,
             sub_date DATE
