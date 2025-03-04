@@ -5,15 +5,21 @@ from wtforms.validators import DataRequired, Length, Email, EqualTo, Optional
 from datetime import date
 import random
 import secrets
-from flask import session
+from flask import session, flash
 import json
 import sqlite3
-
+from werkzeug.security import generate_password_hash, check_password_hash
 
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = secrets.token_hex(16)
 num_questions = 3
+
+
+class LoginForm(FlaskForm):
+    username = StringField('Username', validators=[DataRequired(), Length(min=1, max=40)])
+    password = PasswordField('Password', validators=[DataRequired()])
+    submit = SubmitField('Sign Up for Trivia!')
 
 
 # user form for WTF
@@ -25,6 +31,8 @@ class UserSetupForm(FlaskForm):
     userdob = DateField('Date of Birth', validators=[Optional()], render_kw={"placeholder": "YYYY-MM-DD", "value": date(2000, 1, 1).isoformat()})   
     gender = SelectField('Gender', choices=[('M', 'Male'), ('F', 'Female'), ('NB', 'Non-Binary'), ('O', 'Other')], validators=[Optional()])
     submit = SubmitField('Let’s Play Some Trivia!')
+
+
 
 def load_questions():
     conn = sqlite3.connect('trivia.db')
@@ -59,17 +67,32 @@ class TriviaForm(FlaskForm):
     question_3 = RadioField('Question 3', choices=[], validators=[DataRequired()])
     submit = SubmitField('Submit Answers')
 
-def format_text(text):
-    """ Convert text to sentence case. """
-    return text.capitalize()
 
 def format_options(options):
     """ Convert list of MC options to title case. """
     return [opt.title() for opt in options]
 
+#############################################
+### ROUTES START HERE
+##
+#############################################
+
 @app.route('/', methods=['GET', 'POST'])
 def index():
+    form = LoginForm()  # Assume you have a login form
+    username = session.get('username')  # Proper way to get session data
+
+    if form.validate_on_submit():
+        session['username'] = form.username.data  # Store logged-in user
+        return redirect(url_for('trivia'))  # Redirect to trivia after login
+
+    return render_template('index.html', form=form, username=username)
+
+
+@app.route('/signup', methods=['GET', 'POST'])
+def signup():
     form = UserSetupForm()  # UserSetupForm for setting up trivia
+    print('yay! we made it to signup')
     
     if form.validate_on_submit():
         username = form.username.data
@@ -98,7 +121,12 @@ def index():
 
         return redirect(url_for('trivia'))  # No need for URL params now
 
-    return render_template('index.html', form=form)
+    return render_template('signup.html', form=form)
+
+@app.route('/guest_login')
+def guest_login():
+    session['username'] = f"Guest{random.randint(10000, 99999)}"
+    return redirect(url_for('trivia'))
 
 
 @app.route('/trivia', methods=['GET', 'POST'])
@@ -190,7 +218,7 @@ def contribute():
 
     if request.method == 'POST':
         question_type = request.form['question_type']
-        question_text = format_text(request.form['question'])
+        question_text = request.form['question']
         
         if question_type == 'tf':
             correct_answer = request.form['correct_answer']
@@ -218,11 +246,16 @@ def contribute():
     return render_template('contribute.html')
 
 
-
-
 @app.route('/sub_confirmation')
 def sub_confirmation():
     return render_template('sub_confirmation.html')
+
+
+@app.route('/logout')
+def logout():
+    session.clear()  # Clears all session data
+    flash("You've been logged out!", "info")
+    return redirect(url_for('index'))
 
 
 if __name__ == '__main__':
