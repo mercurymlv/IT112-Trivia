@@ -25,9 +25,9 @@ class LoginForm(FlaskForm):
 # user form for WTF
 class UserSetupForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired(), Length(min=1, max=40)])
-    # email = EmailField('Email', validators=[DataRequired(), Email()])
-    # password = PasswordField('Password', validators=[DataRequired()])
-    # password_confirm = PasswordField('Confirm Password', validators=[DataRequired(), EqualTo('password', message='Passwords must match')])
+    email = EmailField('Email', validators=[DataRequired(), Email()])
+    password = PasswordField('Password', validators=[DataRequired(), Length(min=8, message="Password must be at least 8 characters long")])
+    password_confirm = PasswordField('Confirm Password', validators=[DataRequired(), EqualTo('password', message="Passwords must match")])
     userdob = DateField('Date of Birth', validators=[Optional()], render_kw={"placeholder": "YYYY-MM-DD", "value": date(2000, 1, 1).isoformat()})   
     gender = SelectField('Gender', choices=[('M', 'Male'), ('F', 'Female'), ('NB', 'Non-Binary'), ('O', 'Other')], validators=[Optional()])
     submit = SubmitField('Let’s Play Some Trivia!')
@@ -39,7 +39,7 @@ def load_questions():
     cursor = conn.cursor()
 
     # Fetch all questions from the database
-    cursor.execute("SELECT quest_id, quest_type, quest_text, quest_ans, options FROM Questions")
+    cursor.execute("SELECT quest_id, quest_type, quest_text, quest_ans, options FROM Questions WHERE verified=1")
     rows = cursor.fetchall()
     conn.close()
 
@@ -72,38 +72,56 @@ def format_options(options):
     """ Convert list of MC options to title case. """
     return [opt.title() for opt in options]
 
-#############################################
-### ROUTES START HERE
-##
-#############################################
+#############################################################################
+################# ROUTES START HERE
+########### USER LOGIN/CONFIG STUFF
+#############################################################################
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
-    form = LoginForm()  # Assume you have a login form
-    username = session.get('username')  # Proper way to get session data
+    # If user is already logged in, just greet them
+    if 'username' in session:
+        return render_template('index.html', username=session['username'])
 
-    if form.validate_on_submit():
-        session['username'] = form.username.data  # Store logged-in user
-        return redirect(url_for('trivia'))  # Redirect to trivia after login
+    form = LoginForm()
 
-    return render_template('index.html', form=form, username=username)
+    if form.validate_on_submit():  # If form is submitted & valid
+        username = form.username.data
+        password = form.password.data
+
+        conn = sqlite3.connect('trivia.db')
+        cursor = conn.cursor()
+
+        cursor.execute('SELECT user_id, username, password FROM User WHERE username = ?', (username,))
+        user = cursor.fetchone()
+        conn.close()
+
+        if user and check_password_hash(user[2], password):  # Check password
+            session['user_id'] = user[0]
+            session['username'] = user[1]
+            return redirect(url_for('index'))
+        else:
+            flash('Invalid username or password, please try again', 'danger')
+
+    return render_template('index.html', form=form, username=None)  # No user logged in
 
 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
     form = UserSetupForm()  # UserSetupForm for setting up trivia
-    print('yay! we made it to signup')
     
     if form.validate_on_submit():
         username = form.username.data
         birthdate = form.userdob.data
+        password = form.password.data
         gender = form.gender.data
 
         conn = sqlite3.connect('trivia.db')
         cursor = conn.cursor()
 
         # Insert user data
-        cursor.execute("INSERT INTO User (username) VALUES (?)", (username,))
+        cursor.execute("INSERT INTO User (username, password) VALUES (?, ?)", (username, generate_password_hash(password)))
+        
         user_id = cursor.lastrowid  # Get the ID of the inserted user
 
         # Insert demographics data
@@ -112,34 +130,49 @@ def signup():
 
         conn.commit()
         conn.close()
-    
+        session['user_id'] = user_id
         session['username'] = form.username.data
-        session['num_questions'] = num_questions
 
-        # generate the questions and store in session
-        session['selected_questions'] = get_random_questions()
 
-        return redirect(url_for('trivia'))  # No need for URL params now
+        return redirect(url_for('index'))  # No need for URL params now
 
     return render_template('signup.html', form=form)
 
 @app.route('/guest_login')
 def guest_login():
     session['username'] = f"Guest{random.randint(10000, 99999)}"
-    return redirect(url_for('trivia'))
+    return redirect(url_for('index'))
+
+@app.route('/logout')
+def logout():
+    session.clear()  # Clears all session data
+    flash("You've been logged out!", "info")
+    return redirect(url_for('index'))
+
+
+#############################################################################
+################# TRIVIA QUESTIONS
+########### 
+#############################################################################
 
 
 @app.route('/trivia', methods=['GET', 'POST'])
 def trivia():
-    if 'username' not in session or 'num_questions' not in session:
+    if 'username' not in session:
         return redirect(url_for('index'))  # Restart if session data is missing
 
     username = session['username']
-    selected_questions = session['selected_questions']
+
+    # Only generate new questions if they are not already stored
+    if 'selected_questions' not in session:
+        selected_questions = get_random_questions()
+        session['selected_questions'] = selected_questions
+    else:
+        selected_questions = session['selected_questions']
 
     form = TriviaForm()
 
-    for i in range(3):
+    for i in range(num_questions):
         if selected_questions[i]['quest_type'] == 'mc':
             random.shuffle(selected_questions[i]['options'])
 
@@ -172,6 +205,7 @@ def results():
     if 'selected_questions' not in session or 'user_answers' not in session:
         return redirect(url_for('index'))  # Prevent errors if session data is missing
 
+    user_id = session.get('user_id')
     username = session['username']
     selected_questions = session['selected_questions']
     user_answers = session['user_answers']
@@ -198,23 +232,35 @@ def results():
             'is_correct': is_correct
         })
 
-    return render_template('results.html', username=username, score=score, total=len(selected_questions), results_data=results_data)
+    # Clear session so a new game starts next time
+    session.pop('selected_questions', None)
+    session.pop('user_answers', None)
 
+    return render_template('results.html', user_id=user_id, username=username, score=score, total=len(selected_questions), results_data=results_data)
+
+
+#############################################################################
+################# USER CONTRIBUTED QUESTIONS
+########### 
+#############################################################################
 
 @app.route('/contribute', methods=['GET', 'POST'])
 def contribute():
-    if 'username' not in session:
-        return redirect(url_for('index'))  # Force login before submitting questions
+    if 'username' or 'user_id' not in session:
+        flash("Must be a registered user to submit questions", 'danger')
+        return redirect(url_for('signup'))
+
+    sub_user = session('user_id')
 
     conn = sqlite3.connect('trivia.db')
     cursor = conn.cursor()
 
-    # Get user ID based on username stored in session
-    cursor.execute('SELECT user_id FROM User WHERE username = ?', (session['username'],))
-    user_row = cursor.fetchone()
-    if not user_row:
-        return redirect(url_for('index'))  # If user not found, clear session
-    sub_user = user_row[0]
+    cursor.execute('SELECT user_id FROM User WHERE user_id = ?', (session['user_id'],))
+    user = cursor.fetchone()  # Fetch one result (or None if no match)
+
+    if not user:
+        flash("Must be a registered user to submit questions", 'danger')
+        return redirect(url_for('signup'))
 
     if request.method == 'POST':
         question_type = request.form['question_type']
@@ -251,11 +297,7 @@ def sub_confirmation():
     return render_template('sub_confirmation.html')
 
 
-@app.route('/logout')
-def logout():
-    session.clear()  # Clears all session data
-    flash("You've been logged out!", "info")
-    return redirect(url_for('index'))
+
 
 
 if __name__ == '__main__':

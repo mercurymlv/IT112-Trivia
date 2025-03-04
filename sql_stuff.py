@@ -23,21 +23,21 @@ cursor = conn.cursor()
 
 # cursor.execute("UPDATE Questions SET quest_text='The first president to live in the White House was' WHERE quest_id=20")
 
-# cursor.execute("DELETE FROM Questions WHERE quest_id=20")
+cursor.execute("DELETE FROM Questions WHERE quest_id=21")
 
 # conn.commit()
 
 
-# cursor.execute('SELECT * FROM User')
-# users = cursor.fetchall()
-# for user in users:
-#     print(user)
+cursor.execute('SELECT * FROM Questions')
+quests = cursor.fetchall()
+for q in quests:
+    print(q)
 
 # cursor.execute('ALTER TABLE User ADD COLUMN email TEXT')
 
 # Fetch existing users
-cursor.execute('SELECT user_id, username FROM User')
-users = cursor.fetchall()
+# cursor.execute('SELECT user_id, username FROM User')
+# users = cursor.fetchall()
 
 # # Update users with email and password
 # for user in users:
@@ -51,16 +51,16 @@ users = cursor.fetchall()
 #     cursor.execute("UPDATE User SET email = ?, password = ? WHERE user_id = ?",
 #                    (email, hashed_password, user_id))
 
-for user in users:
-    user_id, username = user
-    # Remove all spaces from the username and then generate password
-    clean_username = username.strip().replace(" ", "")
-    hashed_password = generate_password_hash(clean_username + '333')
-    email = clean_username + '@testingemail.edu'
+# for user in users:
+#     user_id, username = user
+#     # Remove all spaces from the username and then generate password
+#     clean_username = username.strip().replace(" ", "")
+#     hashed_password = generate_password_hash(clean_username + '333')
+#     email = clean_username + '@testingemail.edu'
 
-    # Update the user with email and password
-    cursor.execute("UPDATE User SET email = ?, password = ? WHERE user_id = ?",
-                   (email, hashed_password, user_id))
+#     # Update the user with email and password
+#     cursor.execute("UPDATE User SET email = ?, password = ? WHERE user_id = ?",
+#                    (email, hashed_password, user_id))
 
 
 conn.commit()
