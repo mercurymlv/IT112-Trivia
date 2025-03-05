@@ -1,5 +1,6 @@
 import sqlite3
 from werkzeug.security import generate_password_hash, check_password_hash
+import json
 
 conn = sqlite3.connect('trivia.db')
 cursor = conn.cursor()
@@ -21,17 +22,28 @@ cursor = conn.cursor()
 
 # conn.commit()  # Commit the changes
 
-# cursor.execute("UPDATE Questions SET quest_text='The first president to live in the White House was' WHERE quest_id=20")
 
-cursor.execute("DELETE FROM Questions WHERE quest_id=21")
+# cursor.execute("UPDATE Questions SET quest_text='In _____________ did Kubla Khan a stately pleasure-dome decree.' WHERE quest_id=19")
+# cursor.execute("select * from questions where quest_id=19")
+# q = cursor.fetchall()
+# print(q)
 
-# conn.commit()
+# cursor.execute("DELETE FROM Questions WHERE quest_id=21")
 
 
-cursor.execute('SELECT * FROM Questions')
-quests = cursor.fetchall()
-for q in quests:
-    print(q)
+cursor.execute("SELECT quest_id, verified FROM questions WHERE verified=0")
+cflag = cursor.fetchall()
+
+for f in cflag:
+    cursor.execute("UPDATE questions SET verified = ? WHERE quest_id = ?", (1, f[0]))
+
+
+
+
+# cursor.execute('SELECT * FROM Questions where quest_id in (15,22)')
+# quests = cursor.fetchall()
+# for q in quests:
+#     print(q)
 
 # cursor.execute('ALTER TABLE User ADD COLUMN email TEXT')
 

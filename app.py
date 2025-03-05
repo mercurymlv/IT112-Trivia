@@ -50,7 +50,7 @@ def load_questions():
             'quest_type': row[1],
             'quest_text': row[2],
             'quest_ans': row[3],
-            'options': row[4].split(', ')  # Convert string back to list
+            'options': json.loads(row[4])
         }
         for row in rows
     ]
@@ -99,9 +99,12 @@ def index():
         if user and check_password_hash(user[2], password):  # Check password
             session['user_id'] = user[0]
             session['username'] = user[1]
+
             return redirect(url_for('index'))
         else:
             flash('Invalid username or password, please try again', 'danger')
+
+        
 
     return render_template('index.html', form=form, username=None)  # No user logged in
 
@@ -151,7 +154,7 @@ def logout():
 
 
 #############################################################################
-################# TRIVIA QUESTIONS
+################# TRIVIA QUESTIONS AND STATS
 ########### 
 #############################################################################
 
@@ -238,6 +241,11 @@ def results():
 
     return render_template('results.html', user_id=user_id, username=username, score=score, total=len(selected_questions), results_data=results_data)
 
+@app.route('/stats', methods=['GET','POST'])
+def stats():
+    return render_template('stats.html')
+
+
 
 #############################################################################
 ################# USER CONTRIBUTED QUESTIONS
@@ -246,51 +254,46 @@ def results():
 
 @app.route('/contribute', methods=['GET', 'POST'])
 def contribute():
-    if 'username' or 'user_id' not in session:
+    if 'username' not in session or 'user_id' not in session:
         flash("Must be a registered user to submit questions", 'danger')
         return redirect(url_for('signup'))
 
-    sub_user = session('user_id')
-
-    conn = sqlite3.connect('trivia.db')
-    cursor = conn.cursor()
-
-    cursor.execute('SELECT user_id FROM User WHERE user_id = ?', (session['user_id'],))
-    user = cursor.fetchone()  # Fetch one result (or None if no match)
-
-    if not user:
-        flash("Must be a registered user to submit questions", 'danger')
-        return redirect(url_for('signup'))
+    sub_user = session['user_id']
 
     if request.method == 'POST':
         question_type = request.form['question_type']
         question_text = request.form['question']
         
-        if question_type == 'tf':
-            correct_answer = request.form['correct_answer']
-            options = json.dumps(["TRUE", "FALSE"])  # Store as JSON
-        else:
+        if question_type == 'tf':  # True/False questions
+            options = ["TRUE", "FALSE"]
+        else:  # Multiple choice questions
             options = format_options([
                 request.form['option1'],
                 request.form['option2'],
                 request.form['option3'],
                 request.form['option4']
             ])
-            correct_answer = request.form['correct_answer']
-            options = json.dumps(options)  # Convert list to JSON
+        
+        # Convert to JSON for database storage
+        options_json = json.dumps(options)
+
+        # Fix: Store actual text of selected answer
+        selected_option = request.form['correct_answer']  # e.g., "option1"
+        correct_answer = request.form[selected_option]  # Get actual text
 
         # Insert into database
+        conn = sqlite3.connect('trivia.db')
+        cursor = conn.cursor()
         cursor.execute('''
             INSERT INTO Questions (quest_type, quest_text, quest_ans, options, verified, sub_user, sub_date) 
             VALUES (?, ?, ?, ?, 0, ?, CURRENT_TIMESTAMP)
-        ''', (question_type, question_text, correct_answer, options, sub_user))
+        ''', (question_type, question_text, correct_answer, options_json, sub_user))
         conn.commit()
         conn.close()
 
         return redirect(url_for('sub_confirmation'))
 
     return render_template('contribute.html')
-
 
 @app.route('/sub_confirmation')
 def sub_confirmation():
