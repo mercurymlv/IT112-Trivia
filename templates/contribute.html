@@ -13,7 +13,7 @@
             <label for="question_type" class="form-label"><i class="bi bi-list-task pe-2"></i> Question Type</label>
             <select id="question_type" name="question_type" class="form-select" required onchange="toggleFields()">
                 <option value="mc">Multiple Choice</option>
-                <option value="tf">True/False</option>
+                <option value="t_f">True/False</option>
             </select>
         </div>
 
@@ -62,13 +62,17 @@
         let questionType = document.getElementById("question_type").value;
         let mcOptions = document.getElementById("mc_options");
         let correctAnswer = document.getElementById("correct_answer");
+        let optionInputs = document.querySelectorAll("#mc_options input");
 
-        if (questionType === "tf") {
+        if (questionType === "t_f") {
             mcOptions.style.display = "none"; // Hide MC options
             correctAnswer.innerHTML = `
                 <option value="TRUE">TRUE</option>
                 <option value="FALSE">FALSE</option>
             `; // Set only TRUE/FALSE options
+            
+            // Remove 'required' from multiple-choice inputs
+            optionInputs.forEach(input => input.removeAttribute("required"));
         } else {
             mcOptions.style.display = "block"; // Show MC options
             correctAnswer.innerHTML = `
@@ -77,6 +81,9 @@
                 <option value="option3">Option 3</option>
                 <option value="option4">Option 4</option>
             `; // Restore MC options
+            
+            // Add 'required' back to multiple-choice inputs
+            optionInputs.forEach(input => input.setAttribute("required", "true"));
         }
     }
 

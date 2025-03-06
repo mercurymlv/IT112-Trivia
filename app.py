@@ -13,16 +13,19 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = secrets.token_hex(16)
+
+# I had a hard time making the number of questions dynamic - just hard-coding for now
 num_questions = 3
 
 
+# User login WTF form
 class LoginForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired(), Length(min=1, max=40)])
     password = PasswordField('Password', validators=[DataRequired()])
-    submit = SubmitField('Sign Up for Trivia!')
+    submit = SubmitField('Let’s Play Some Trivia!')
 
 
-# user form for WTF
+# WTF user signup form
 class UserSetupForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired(), Length(min=1, max=40)])
     email = EmailField('Email', validators=[DataRequired(), Email()])
@@ -30,20 +33,21 @@ class UserSetupForm(FlaskForm):
     password_confirm = PasswordField('Confirm Password', validators=[DataRequired(), EqualTo('password', message="Passwords must match")])
     userdob = DateField('Date of Birth', validators=[Optional()], render_kw={"placeholder": "YYYY-MM-DD", "value": date(2000, 1, 1).isoformat()})   
     gender = SelectField('Gender', choices=[('M', 'Male'), ('F', 'Female'), ('NB', 'Non-Binary'), ('O', 'Other')], validators=[Optional()])
-    submit = SubmitField('Let’s Play Some Trivia!')
+    submit = SubmitField('Sign Up for Trivia!')
 
 
-
+# Load all qustions from the SQlite DB
 def load_questions():
     conn = sqlite3.connect('trivia.db')
     cursor = conn.cursor()
 
-    # Fetch all questions from the database
+    # load and fetch all questions that are verfied (i.e. user-submitted questions need to be checked first)
     cursor.execute("SELECT quest_id, quest_type, quest_text, quest_ans, options FROM Questions WHERE verified=1")
     rows = cursor.fetchall()
     conn.close()
 
     # Convert each row into a dictionary
+    # the options (for multiple choice) are in JSON format because they are just a list
     questions = [
         {
             'quest_id': row[0],
@@ -57,10 +61,13 @@ def load_questions():
 
     return questions
 
+# Pull random questions for the user's quiz
 def get_random_questions():
     questions = load_questions()
     return random.sample(questions, num_questions)
 
+
+# WTF form to display the trivia questions and collect answers
 class TriviaForm(FlaskForm):
     question_1 = RadioField('Question 1', choices=[], validators=[DataRequired()])
     question_2 = RadioField('Question 2', choices=[], validators=[DataRequired()])
@@ -69,8 +76,10 @@ class TriviaForm(FlaskForm):
 
 
 def format_options(options):
-    """ Convert list of MC options to title case. """
+    # Convert list of MC options to title case for user-submitted Qs
     return [opt.title() for opt in options]
+
+
 
 #############################################################################
 ################# ROUTES START HERE
@@ -83,20 +92,22 @@ def index():
     if 'username' in session:
         return render_template('index.html', username=session['username'])
 
+    # sign in form (if they already have acct)
     form = LoginForm()
 
-    if form.validate_on_submit():  # If form is submitted & valid
+    if form.validate_on_submit():
         username = form.username.data
         password = form.password.data
 
+        # get username and password from db
         conn = sqlite3.connect('trivia.db')
         cursor = conn.cursor()
-
         cursor.execute('SELECT user_id, username, password FROM User WHERE username = ?', (username,))
         user = cursor.fetchone()
         conn.close()
 
-        if user and check_password_hash(user[2], password):  # Check password
+        # Check password and save user info to session if valid
+        if user and check_password_hash(user[2], password):
             session['user_id'] = user[0]
             session['username'] = user[1]
 
@@ -104,14 +115,14 @@ def index():
         else:
             flash('Invalid username or password, please try again', 'danger')
 
-        
+    
+    return render_template('index.html', form=form, username=None)
 
-    return render_template('index.html', form=form, username=None)  # No user logged in
 
-
+# To create new user acct
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
-    form = UserSetupForm()  # UserSetupForm for setting up trivia
+    form = UserSetupForm()
     
     if form.validate_on_submit():
         username = form.username.data
@@ -122,10 +133,11 @@ def signup():
         conn = sqlite3.connect('trivia.db')
         cursor = conn.cursor()
 
-        # Insert user data
+        # Insert user data - encrypt the password
         cursor.execute("INSERT INTO User (username, password) VALUES (?, ?)", (username, generate_password_hash(password)))
         
-        user_id = cursor.lastrowid  # Get the ID of the inserted user
+        # return the user id to use as lookup for demo table
+        user_id = cursor.lastrowid
 
         # Insert demographics data
         cursor.execute("INSERT INTO Demographics (user_id, dob, gender) VALUES (?, ?, ?)", 
@@ -137,13 +149,14 @@ def signup():
         session['username'] = form.username.data
 
 
-        return redirect(url_for('index'))  # No need for URL params now
+        return redirect(url_for('index'))
 
     return render_template('signup.html', form=form)
 
+# Allow guests but don't create in db, just temporary - save in session only
 @app.route('/guest_login')
 def guest_login():
-    session['username'] = f"Guest{random.randint(10000, 99999)}"
+    session['username'] = f"Guest{random.randint(10000, 99999)}" # assign rando username
     return redirect(url_for('index'))
 
 @app.route('/logout')
@@ -158,7 +171,7 @@ def logout():
 ########### 
 #############################################################################
 
-
+# create and administer the trivia quiz
 @app.route('/trivia', methods=['GET', 'POST'])
 def trivia():
     if 'username' not in session:
@@ -175,12 +188,14 @@ def trivia():
 
     form = TriviaForm()
 
+    # shuffle the options for multiple choice (but not for T/F)
     for i in range(num_questions):
         if selected_questions[i]['quest_type'] == 'mc':
             random.shuffle(selected_questions[i]['options'])
 
 
     # Manually assign question text and choices
+    # opt, opt is for value and name - wtf needs tuple, keep same
     form.question_1.label.text = selected_questions[0]['quest_text']
     form.question_1.choices = [(opt, opt) for opt in selected_questions[0]['options']]
     
@@ -202,7 +217,7 @@ def trivia():
     return render_template('trivia.html', username=username, form=form)
 
 
-
+# check answers and give score
 @app.route('/results')
 def results():
     if 'selected_questions' not in session or 'user_answers' not in session:
@@ -241,6 +256,8 @@ def results():
 
     return render_template('results.html', user_id=user_id, username=username, score=score, total=len(selected_questions), results_data=results_data)
 
+
+# WIP - display varies starts for user and population
 @app.route('/stats', methods=['GET','POST'])
 def stats():
     return render_template('stats.html')
@@ -254,7 +271,7 @@ def stats():
 
 @app.route('/contribute', methods=['GET', 'POST'])
 def contribute():
-    if 'username' not in session or 'user_id' not in session:
+    if 'username' not in session or 'user_id' not in session: # check user_id too - guests shouldn't submit
         flash("Must be a registered user to submit questions", 'danger')
         return redirect(url_for('signup'))
 
@@ -264,7 +281,7 @@ def contribute():
         question_type = request.form['question_type']
         question_text = request.form['question']
         
-        if question_type == 'tf':  # True/False questions
+        if question_type == 't_f':  # default for True/False questions
             options = ["TRUE", "FALSE"]
         else:  # Multiple choice questions
             options = format_options([
@@ -274,14 +291,21 @@ def contribute():
                 request.form['option4']
             ])
         
-        # Convert to JSON for database storage
+
+        # Convert to JSON for db storage
         options_json = json.dumps(options)
 
-        # Fix: Store actual text of selected answer
-        selected_option = request.form['correct_answer']  # e.g., "option1"
-        correct_answer = request.form[selected_option]  # Get actual text
+        # Store actual text of selected answer
+        selected_option = request.form['correct_answer']  # e.g., "option1" or True/False
+        
+        
+        if question_type == 't_f':  
+            correct_answer = selected_option  # Just use "TRUE" or "FALSE" directly
+        else:
+            correct_answer = request.form[selected_option]  # Get actual text from form input
 
         # Insert into database
+        # verified is 0 by default - need review first
         conn = sqlite3.connect('trivia.db')
         cursor = conn.cursor()
         cursor.execute('''
