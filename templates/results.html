@@ -18,6 +18,15 @@
             {% else %}
                 <p class="text-danger"><strong>❌ Incorrect.</strong></p>
             {% endif %}
+
+            {% if result.wiki_links and result.wiki_links[0] != "No relevant Wikipedia articles found." %}
+            <p><strong>Learn More:</strong></p>
+            <ul>
+                {% for link in result.wiki_links %}
+                    <li><a href="{{ link['url'] }}" target="_blank">Wikipedia: {{ link['title'] }}</a></li>
+                {% endfor %}
+            </ul>
+            {% endif %}
         </div>
         {% endfor %}
         

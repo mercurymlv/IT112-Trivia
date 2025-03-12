@@ -1,14 +1,14 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, session, flash
 from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField, DateField, EmailField, SelectField, PasswordField, RadioField
 from wtforms.validators import DataRequired, Length, Email, EqualTo, Optional
 from datetime import date
 import random
 import secrets
-from flask import session, flash
 import json
 import sqlite3
 from werkzeug.security import generate_password_hash, check_password_hash
+import requests
 
 
 app = Flask(__name__)
@@ -47,7 +47,7 @@ def load_questions():
     conn.close()
 
     # Convert each row into a dictionary
-    # the options (for multiple choice) are in JSON format because they are just a list
+    # the options (possible answers) are in JSON format because they are just a list
     questions = [
         {
             'quest_id': row[0],
@@ -65,6 +65,27 @@ def load_questions():
 def get_random_questions():
     questions = load_questions()
     return random.sample(questions, num_questions)
+
+
+# Search Wikipedia for articles about the questions subject matter
+def search_wikipedia(query):
+    url = "https://en.wikipedia.org/w/api.php"
+    params = {
+        "action": "query",
+        "list": "search",
+        "srsearch": query,
+        "format": "json"
+    }
+    response = requests.get(url, params=params)
+    
+    if response.status_code == 200:
+        results = response.json().get("query", {}).get("search", [])
+        if results:
+            return [
+                {"title": result['title'], "url": f"https://en.wikipedia.org/wiki/{result['title'].replace(' ', '_')}"}
+                for result in results[:2]  # Get top 2 results
+            ]
+    return [{"title": "No relevant Wikipedia articles found", "url": "#"}]
 
 
 # WTF form to display the trivia questions and collect answers
@@ -126,6 +147,7 @@ def signup():
     
     if form.validate_on_submit():
         username = form.username.data
+        email = form.email.data
         birthdate = form.userdob.data
         password = form.password.data
         gender = form.gender.data
@@ -134,7 +156,7 @@ def signup():
         cursor = conn.cursor()
 
         # Insert user data - encrypt the password
-        cursor.execute("INSERT INTO User (username, password) VALUES (?, ?)", (username, generate_password_hash(password)))
+        cursor.execute("INSERT INTO User (username, password, email) VALUES (?, ?, ?)", (username, generate_password_hash(password), email))
         
         # return the user id to use as lookup for demo table
         user_id = cursor.lastrowid
@@ -242,12 +264,20 @@ def results():
         if is_correct:
             score += 1
 
+        # get Wikipedia links for the question
+        if question['quest_type'] == 'mc':
+            wiki_links = search_wikipedia(question['quest_ans'])
+        else:
+            wiki_links = search_wikipedia(question['quest_text'])
+            
+
         # Store question data for display
         results_data.append({
             'question_text': question['quest_text'],
             'correct_answer': correct_answer,
             'user_answer': user_answer,
-            'is_correct': is_correct
+            'is_correct': is_correct,
+            'wiki_links': wiki_links
         })
 
     # Clear session so a new game starts next time
