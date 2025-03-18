@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trivia! - Let's Play!</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="static/css/style.css"> <!-- Your custom styles -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css"> <!-- Bootstrap Icons -->
+</head>
+<body>
+
+<div class="container mt-4">
+    <h1 class="mb-4">Hello, <span id="username">Player</span>! Let's Play Trivia 🎉</h1>
+    <p>Answer the questions below:</p>
+
+    <form method="POST">
+        <div class="mb-4">
+            <h5 class="mb-2">Question 1: What is the capital of France?</h5>
+            <div class="d-flex flex-column flex-md-row gap-3">
+                <div class="form-check">
+                    <input type="radio" class="form-check-input" name="question_1" id="q1_paris" value="Paris">
+                    <label class="form-check-label" for="q1_paris">Paris</label>
+                </div>
+                <div class="form-check">
+                    <input type="radio" class="form-check-input" name="question_1" id="q1_rome" value="Rome">
+                    <label class="form-check-label" for="q1_rome">Rome</label>
+                </div>
+                <div class="form-check">
+                    <input type="radio" class="form-check-input" name="question_1" id="q1_berlin" value="Berlin">
+                    <label class="form-check-label" for="q1_berlin">Berlin</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="mb-4">
+            <h5 class="mb-2">Question 2: What is 2 + 2?</h5>
+            <div class="d-flex flex-column flex-md-row gap-3">
+                <div class="form-check">
+                    <input type="radio" class="form-check-input" name="question_2" id="q2_3" value="3">
+                    <label class="form-check-label" for="q2_3">3</label>
+                </div>
+                <div class="form-check">
+                    <input type="radio" class="form-check-input" name="question_2" id="q2_4" value="4">
+                    <label class="form-check-label" for="q2_4">4</label>
+                </div>
+                <div class="form-check">
+                    <input type="radio" class="form-check-input" name="question_2" id="q2_5" value="5">
+                    <label class="form-check-label" for="q2_5">5</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="mb-4">
+            <h5 class="mb-2">Question 3: What is the largest planet in our solar system?</h5>
+            <div class="d-flex flex-column flex-md-row gap-3">
+                <div class="form-check">
+                    <input type="radio" class="form-check-input" name="question_3" id="q3_earth" value="Earth">
+                    <label class="form-check-label" for="q3_earth">Earth</label>
+                </div>
+                <div class="form-check">
+                    <input type="radio" class="form-check-input" name="question_3" id="q3_jupiter" value="Jupiter">
+                    <label class="form-check-label" for="q3_jupiter">Jupiter</label>
+                </div>
+                <div class="form-check">
+                    <input type="radio" class="form-check-input" name="question_3" id="q3_mars" value="Mars">
+                    <label class="form-check-label" for="q3_mars">Mars</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center">
+            <button type="submit" class="btn btn-primary btn-lg">
+                <i class="bi bi-pencil-fill"></i> Submit Answers
+            </button>
+        </div>
+    </form>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+</html>

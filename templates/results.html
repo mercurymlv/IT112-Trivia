@@ -23,7 +23,7 @@
             <p><strong>Learn More:</strong></p>
             <ul>
                 {% for link in result.wiki_links %}
-                    <li><a href="{{ link['url'] }}" target="_blank">Wikipedia: {{ link['title'] }}</a></li>
+                    <li><a class="icon-link icon-link-hover link-underline-opacity-25 d-flex align-items-center" href="{{ link['url'] }}" target="_blank">Wikipedia: {{ link['title'] }} <i class="bi bi-box-arrow-up-right ms-1"></i></a></li>
                 {% endfor %}
             </ul>
             {% endif %}
