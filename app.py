@@ -64,6 +64,10 @@ def load_questions():
 # Pull random questions for the user's quiz
 def get_random_questions():
     questions = load_questions()
+
+    print(questions)
+    print(type(questions))
+
     return random.sample(questions, num_questions)
 
 
