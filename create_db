@@ -41,17 +41,17 @@ def init_db():
 
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS game_header (
-            game_id SERIAL PRIMARY KEY,
+            game_id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INT REFERENCES users(user_id),
             status INT,
-            start TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            end FLOAT
+            start_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            duration FLOAT
         )
     ''')
 
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS game_detail (
-            gd_id SERIAL PRIMARY KEY,
+            gd_id INTEGER PRIMARY KEY AUTOINCREMENT,
             game_id INT REFERENCES game_header(game_id),
             question_id INT REFERENCES question_bank(question_id),
             correct BOOLEAN,

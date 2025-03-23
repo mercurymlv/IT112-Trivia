@@ -2,13 +2,14 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField, DateField, EmailField, SelectField, PasswordField, RadioField
 from wtforms.validators import DataRequired, Length, Email, EqualTo, Optional
-from datetime import date
+from datetime import date, datetime
 import random
 import secrets
 import json
 import sqlite3
 from werkzeug.security import generate_password_hash, check_password_hash
 import requests
+import time
 
 
 app = Flask(__name__)
@@ -204,6 +205,21 @@ def trivia():
         return redirect(url_for('index'))  # Restart if session data is missing
 
     username = session['username']
+    user_id = session.get('user_id', None)
+
+    if user_id:  # Only store games for registered users, not guests
+        if 'game_id' not in session:
+            conn = sqlite3.connect('trivia.db')
+            cursor = conn.cursor()
+
+            cursor.execute("INSERT INTO game_header (user_id, status) VALUES (?, ?)", 
+                           (user_id, 'in_progress'))
+            
+            session['game_id'] = cursor.lastrowid
+            conn.commit()
+            conn.close()
+
+
 
     # Only generate new questions if they are not already stored
     if 'selected_questions' not in session:
@@ -249,6 +265,7 @@ def results():
     if 'selected_questions' not in session or 'user_answers' not in session:
         return redirect(url_for('index'))  # Prevent errors if session data is missing
 
+    game_id = session['game_id']
     user_id = session.get('user_id')
     username = session['username']
     selected_questions = session['selected_questions']
@@ -256,6 +273,10 @@ def results():
 
     score = 0
     results_data = []  # Store each question, correct answer, and user answer
+
+    conn = sqlite3.connect('trivia.db')
+    cursor = conn.cursor()
+
 
     # Loop through the selected questions to compare answers
     for i, question in enumerate(selected_questions, start=1):
@@ -267,6 +288,12 @@ def results():
         is_correct = user_answer == correct_answer
         if is_correct:
             score += 1
+
+        
+
+        cursor.execute("INSERT INTO game_detail (game_id, question_id, correct) VALUES (?, ?, ?)", 
+                (game_id, question['quest_id'], int(is_correct)))
+
 
         # get Wikipedia links for the question
         if question['quest_type'] == 'mc':
@@ -284,9 +311,24 @@ def results():
             'wiki_links': wiki_links
         })
 
+    # Update game status and duration
+    start_time = cursor.execute("SELECT start_time FROM game_header WHERE game_id=?", (game_id,)).fetchone()[0]
+    start_time_obj = datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S")
+    start_timestamp = int(start_time_obj.timestamp())
+
+    duration = int(time.time()) - start_timestamp  # Calculate total time taken
+
+    cursor.execute("UPDATE game_header SET status=?, duration=? WHERE game_id=?", 
+                   ('completed', duration, game_id))
+
+    conn.commit()
+    conn.close()
+
+
     # Clear session so a new game starts next time
     session.pop('selected_questions', None)
     session.pop('user_answers', None)
+    session.pop('game_id', None)
 
     return render_template('results.html', user_id=user_id, username=username, score=score, total=len(selected_questions), results_data=results_data)
 

@@ -31,11 +31,11 @@ cursor = conn.cursor()
 # cursor.execute("DELETE FROM Questions WHERE quest_id=21")
 
 
-cursor.execute("SELECT quest_id, verified FROM questions WHERE verified=0")
-cflag = cursor.fetchall()
+# cursor.execute("SELECT quest_id, verified FROM questions WHERE verified=0")
+# cflag = cursor.fetchall()
 
-for f in cflag:
-    cursor.execute("UPDATE questions SET verified = ? WHERE quest_id = ?", (1, f[0]))
+# for f in cflag:
+#     cursor.execute("UPDATE questions SET verified = ? WHERE quest_id = ?", (1, f[0]))
 
 
 
@@ -73,6 +73,19 @@ for f in cflag:
 #     # Update the user with email and password
 #     cursor.execute("UPDATE User SET email = ?, password = ? WHERE user_id = ?",
 #                    (email, hashed_password, user_id))
+
+cursor.execute('''
+    CREATE TABLE IF NOT EXISTS game_detail (
+        gd_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        game_id INT REFERENCES game_header(game_id),
+        question_id INT REFERENCES question_bank(question_id),
+        correct BOOLEAN,
+        UNIQUE (game_id, question_id)  -- Ensures each question appears only once per game
+    )
+''')
+
+
+
 
 
 conn.commit()
