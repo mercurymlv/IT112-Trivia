@@ -3,8 +3,53 @@
 {% block title %}Trivia! - Stats{% endblock %}
 
 {% block content %}
-<div class="container text-center">
-    <h1>This page left intenionally blank...for now...</h1>
-</div>
+<div class="container mt-4">
+    {% if user_id %}
+        <h1 class="text-center">Your Trivia Stats</h1>
+    {% else %}
+        <h1 class="text-center">General Population Stats</h1>
+        <p class="text-center">
+            <a href="{{ url_for('signup') }}">Sign up</a> to save your stats!
+        </p>
+    {% endif %}
 
+    <div class="row mt-4">
+        <!-- Total Games Played -->
+        <div class="col-md-4">
+            <div class="card text-white bg-primary mb-3 text-center">
+                <div class="card-body">
+                    <h5 class="card-title">Total Games Played</h5>
+                    <p class="display-4">{{ total_games }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Total Correct Answers -->
+        <div class="col-md-4">
+            <div class="card text-white bg-success mb-3 text-center">
+                <div class="card-body">
+                    <h5 class="card-title">Total Correct Answers</h5>
+                    <p class="display-4">{{ total_correct }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Accuracy Percentage -->
+        <div class="col-md-4">
+            <div class="card text-white bg-info mb-3 text-center">
+                <div class="card-body">
+                    <h5 class="card-title">Accuracy</h5>
+                    <p class="display-4">
+                        {% if total_correct and total_games > 0 %}
+                            {{ ((total_correct / (total_games * 3)) * 100) | round(1) }}%
+                        {% else %}
+                            0%
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
+

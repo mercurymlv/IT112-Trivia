@@ -265,7 +265,9 @@ def results():
     if 'selected_questions' not in session or 'user_answers' not in session:
         return redirect(url_for('index'))  # Prevent errors if session data is missing
 
-    game_id = session['game_id']
+
+# Use "get" because guests won't have game or user ids
+    game_id = session.get('game_id')
     user_id = session.get('user_id')
     username = session['username']
     selected_questions = session['selected_questions']
@@ -290,8 +292,8 @@ def results():
             score += 1
 
         
-
-        cursor.execute("INSERT INTO game_detail (game_id, question_id, correct) VALUES (?, ?, ?)", 
+        if user_id:
+            cursor.execute("INSERT INTO game_detail (game_id, question_id, correct) VALUES (?, ?, ?)", 
                 (game_id, question['quest_id'], int(is_correct)))
 
 
@@ -312,14 +314,16 @@ def results():
         })
 
     # Update game status and duration
-    start_time = cursor.execute("SELECT start_time FROM game_header WHERE game_id=?", (game_id,)).fetchone()[0]
-    start_time_obj = datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S")
-    start_timestamp = int(start_time_obj.timestamp())
 
-    duration = int(time.time()) - start_timestamp  # Calculate total time taken
+    if user_id:
+        start_time = cursor.execute("SELECT start_time FROM game_header WHERE game_id=?", (game_id,)).fetchone()[0]
+        start_time_obj = datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S")
+        start_timestamp = int(start_time_obj.timestamp())
 
-    cursor.execute("UPDATE game_header SET status=?, duration=? WHERE game_id=?", 
-                   ('completed', duration, game_id))
+        duration = int(time.time()) - start_timestamp  # Calculate total time taken
+
+        cursor.execute("UPDATE game_header SET status=?, duration=? WHERE game_id=?", 
+                    ('completed', duration, game_id))
 
     conn.commit()
     conn.close()
@@ -333,10 +337,31 @@ def results():
     return render_template('results.html', user_id=user_id, username=username, score=score, total=len(selected_questions), results_data=results_data)
 
 
-# WIP - display varies starts for user and population
-@app.route('/stats', methods=['GET','POST'])
+# Display stats for a user if they are logged in or general population stats otherwise
+@app.route('/stats', methods=['GET'])
 def stats():
-    return render_template('stats.html')
+    user_id = session.get('user_id')
+
+    conn = sqlite3.connect("trivia.db")
+    cur = conn.cursor()
+
+    # Single query to get both total games and total correct
+    cur.execute("""
+        SELECT 
+            COUNT(DISTINCT game_header.game_id) AS total_games,
+            COUNT(game_detail.correct) AS total_correct
+        FROM game_header
+        LEFT JOIN game_detail ON game_header.game_id = game_detail.game_id AND game_detail.correct = 1
+        WHERE game_header.status = 'completed'
+        """ + (" AND game_header.user_id = ?" if user_id else ""),
+        (user_id,) if user_id else ()
+    )
+
+    total_games, total_correct = cur.fetchone()
+
+    conn.close()
+
+    return render_template("stats.html", user_id=user_id, total_games=total_games, total_correct=total_correct)
 
 
 
