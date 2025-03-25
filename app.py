@@ -18,6 +18,17 @@ app.config['SECRET_KEY'] = secrets.token_hex(16)
 # I had a hard time making the number of questions dynamic - just hard-coding for now
 num_questions = 3
 
+# orders for age groups
+# custom_order = {
+#     "Youngsters": 0,
+#     "Teens": 1, 
+#     "20-29": 2, 
+#     "30-39": 3, 
+#     "40-49": 4, 
+#     "50-59": 5, 
+#     "60+": 6
+# }
+
 
 # User login WTF form
 class LoginForm(FlaskForm):
@@ -343,10 +354,10 @@ def stats():
     user_id = session.get('user_id')
 
     conn = sqlite3.connect("trivia.db")
-    cur = conn.cursor()
+    cursor = conn.cursor()
 
     # Single query to get both total games and total correct
-    cur.execute("""
+    cursor.execute("""
         SELECT 
             COUNT(DISTINCT game_header.game_id) AS total_games,
             COUNT(game_detail.correct) AS total_correct
@@ -357,11 +368,47 @@ def stats():
         (user_id,) if user_id else ()
     )
 
-    total_games, total_correct = cur.fetchone()
+    total_games, total_correct = cursor.fetchone()
 
+
+# gather statistics for age groups
+    cursor.execute("""
+        SELECT 
+            CASE 
+                WHEN CAST((strftime('%Y', 'now') - strftime('%Y', Demographics.dob)) AS INTEGER) < 13 THEN '12 and below'
+                WHEN CAST((strftime('%Y', 'now') - strftime('%Y', Demographics.dob)) AS INTEGER) BETWEEN 13 AND 19 THEN '13-19'
+                WHEN CAST((strftime('%Y', 'now') - strftime('%Y', Demographics.dob)) AS INTEGER) BETWEEN 20 AND 29 THEN '20-29'
+                WHEN CAST((strftime('%Y', 'now') - strftime('%Y', Demographics.dob)) AS INTEGER) BETWEEN 30 AND 39 THEN '30-39'
+                WHEN CAST((strftime('%Y', 'now') - strftime('%Y', Demographics.dob)) AS INTEGER) BETWEEN 40 AND 49 THEN '40-49'
+                WHEN CAST((strftime('%Y', 'now') - strftime('%Y', Demographics.dob)) AS INTEGER) BETWEEN 50 AND 59 THEN '50-59'
+                ELSE '60+'
+            END AS age_group,
+            COUNT(game_detail.correct) AS total_answers,
+            SUM(game_detail.correct) AS correct_answers
+        FROM User
+        left join Demographics on user.user_id = Demographics.user_id
+        JOIN game_header ON User.user_id = game_header.user_id
+        Left JOIN game_detail ON game_header.game_id = game_detail.game_id
+        WHERE game_header.status = 'completed'
+        ANd Demographics.dob is not null
+        GROUP BY age_group
+        """)
+
+    age_data = cursor.fetchall()
     conn.close()
 
-    return render_template("stats.html", user_id=user_id, total_games=total_games, total_correct=total_correct)
+    # Format data for Chart.js
+    age_groups = []
+    accuracy_rates = []
+
+    for row in age_data:
+        age_group, total_answers, correct_answers = row
+        age_groups.append(age_group)
+        accuracy_rates.append(round((correct_answers / total_answers) * 100, 1))
+
+
+    return render_template("stats.html", user_id=user_id, total_games=total_games, total_correct=total_correct, age_groups=age_groups,
+                           accuracy_rates=accuracy_rates)
 
 
 

@@ -74,19 +74,39 @@ cursor = conn.cursor()
 #     cursor.execute("UPDATE User SET email = ?, password = ? WHERE user_id = ?",
 #                    (email, hashed_password, user_id))
 
-cursor.execute('''
-    CREATE TABLE IF NOT EXISTS game_detail (
-        gd_id INTEGER PRIMARY KEY AUTOINCREMENT,
-        game_id INT REFERENCES game_header(game_id),
-        question_id INT REFERENCES question_bank(question_id),
-        correct BOOLEAN,
-        UNIQUE (game_id, question_id)  -- Ensures each question appears only once per game
-    )
-''')
+# cursor.execute("""
+#     SELECT 
+#         CASE 
+#             WHEN (strftime('%Y', 'now') - strftime('%Y', Demographics.dob)) BETWEEN 1 AND 12 THEN 'Youngsters'
+#             WHEN (strftime('%Y', 'now') - strftime('%Y', Demographics.dob)) BETWEEN 13 AND 19 THEN 'Teen'
+#             WHEN (strftime('%Y', 'now') - strftime('%Y', Demographics.dob)) BETWEEN 20 AND 29 THEN '20-29'
+#             WHEN (strftime('%Y', 'now') - strftime('%Y', Demographics.dob)) BETWEEN 30 AND 39 THEN '30-39'
+#             WHEN (strftime('%Y', 'now') - strftime('%Y', Demographics.dob)) BETWEEN 40 AND 49 THEN '40-49'
+#             WHEN (strftime('%Y', 'now') - strftime('%Y', Demographics.dob)) BETWEEN 50 AND 59 THEN '50-59'
+#             ELSE '60+'
+#         END AS age_group,
+#         COUNT(game_detail.correct) AS total_answers,
+#         SUM(game_detail.correct) AS correct_answers
+#     FROM User
+#     left join Demographics on user.user_id = Demographics.user_id
+#     JOIN game_header ON User.user_id = game_header.user_id
+#     Left JOIN game_detail ON game_header.game_id = game_detail.game_id
+#     WHERE game_header.status = 'completed'
+#     ANd Demographics.dob is not null
+#     GROUP BY age_group
+#     """)
+
+# age_data = cursor.fetchall()
+
+# print(age_data)
 
 
+cursor.execute("select quest_id from Questions where verified=1")
 
+qids = cursor.fetchall()
 
+for i in qids:
+    print(i[0])
 
 conn.commit()
 conn.close()   # Close the conn
