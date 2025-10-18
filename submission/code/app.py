@@ -10,18 +10,10 @@ import sqlite3
 from werkzeug.security import generate_password_hash, check_password_hash
 import requests
 import time
-import os
-from dotenv import load_dotenv
 
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = secrets.token_hex(16)
-
-
-# Load some variable values
-load_dotenv()  # loads .env file contents into os.environ
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-
 
 # I had a hard time making the number of questions dynamic - just hard-coding for now
 num_questions = 3
@@ -91,81 +83,25 @@ def get_random_questions():
     return random.sample(questions, num_questions)
 
 
-# # Search Wikipedia for articles about the questions subject matter
-# def search_wikipedia(query):
-#     url = "https://en.wikipedia.org/w/api.php"
-#     params = {
-#         "action": "query",
-#         "list": "search",
-#         "srsearch": query,
-#         "format": "json"
-#     }
-#     response = requests.get(url, params=params)
+# Search Wikipedia for articles about the questions subject matter
+def search_wikipedia(query):
+    url = "https://en.wikipedia.org/w/api.php"
+    params = {
+        "action": "query",
+        "list": "search",
+        "srsearch": query,
+        "format": "json"
+    }
+    response = requests.get(url, params=params)
     
-#     if response.status_code == 200:
-#         results = response.json().get("query", {}).get("search", [])
-#         if results:
-#             return [
-#                 {"title": result['title'], "url": f"https://en.wikipedia.org/wiki/{result['title'].replace(' ', '_')}"}
-#                 for result in results[:2]  # Get top 2 results
-#             ]
-#     return [{"title": "No relevant Wikipedia articles found", "url": "#"}]
-
-
-# Provide answer feedback from a chatbot
-def get_llm_interpretation(question, user_answer, correct_answer):
-    url = "https://openrouter.ai/api/v1/chat/completions"
-    headers = {
-        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-        "HTTP-Referer": "matthewvaldez.com",
-        "X-Title": "TriviaAppTest",
-    }
-
-
-    # Determine if we should ask for "what they may have been thinking"
-    if user_answer == correct_answer:
-        extra_instruction = "Since the user's answer is correct, you do not need to speculate on incorrect answers."
-    else:
-        extra_instruction = "If the user's answer is wrong, briefly mention what they may have been thinking."
-
-    payload = {
-        "model": "openai/gpt-oss-20b:free",
-        "messages": [
-            {
-                "role": "user",
-                "content": f"""
-                Trivia question: {question}
-                User's answer: {user_answer}
-                Correct answer: {correct_answer}
-
-                Please give a friendly explanation:
-                - Why the correct answer is correct.
-                - {extra_instruction}
-                - Keep it concise and polite.
-                                """
-            }
-        ],
-        "temperature": 0.7,
-        "max_tokens": 150
-    }
-
-    response = requests.post(url, headers=headers, data=json.dumps(payload))
-    data = response.json()
-    return data["choices"][0]["message"]["content"]
-
-    try:
-        response = requests.post(url, headers=headers, json=payload)
-        data = response.json()
-
-        # Safe access
-        if "choices" in data and len(data["choices"]) > 0:
-            return data["choices"][0]["message"]["content"].strip()
-        else:
-            return f"Unexpected response format: {data}"
-
-    except Exception as e:
-        return f"Error calling OpenRouter API: {str(e)}"
-
+    if response.status_code == 200:
+        results = response.json().get("query", {}).get("search", [])
+        if results:
+            return [
+                {"title": result['title'], "url": f"https://en.wikipedia.org/wiki/{result['title'].replace(' ', '_')}"}
+                for result in results[:2]  # Get top 2 results
+            ]
+    return [{"title": "No relevant Wikipedia articles found", "url": "#"}]
 
 
 # WTF form to display the trivia questions and collect answers
@@ -372,19 +308,12 @@ def results():
                 (game_id, question['quest_id'], int(is_correct)))
 
 
-        # # get Wikipedia links for the question
-        # if question['quest_type'] == 'mc':
-        #     wiki_links = search_wikipedia(question['quest_ans'])
-        # else:
-        #     wiki_links = search_wikipedia(question['quest_text'])
+        # get Wikipedia links for the question
+        if question['quest_type'] == 'mc':
+            wiki_links = search_wikipedia(question['quest_ans'])
+        else:
+            wiki_links = search_wikipedia(question['quest_text'])
             
-        try:
-            llm_reply = get_llm_interpretation(
-                question['quest_text'], user_answer, correct_answer
-            )
-            llm_response_text = llm_reply
-        except Exception as e:
-            llm_response_text = f"Error getting LLM explanation: {e}"
 
         # Store question data for display
         results_data.append({
@@ -392,9 +321,8 @@ def results():
             'correct_answer': correct_answer,
             'user_answer': user_answer,
             'is_correct': is_correct,
-            'llm_explanation': llm_response_text
+            'wiki_links': wiki_links
         })
-
 
     # Update game status and duration
 

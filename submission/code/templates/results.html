@@ -19,14 +19,13 @@
                 <p class="text-danger"><strong>❌ Incorrect.</strong></p>
             {% endif %}
 
-            {% if result.llm_explanation %}
-                <div class="mt-2 p-3 rounded bg-light border">
-                <p class="mb-1 text-secondary">
-                    <i class="bi bi-robot me-2 text-primary"></i>
-                    <strong>Trivvy, the trivia chatbot says:</strong>
-                </p>
-                <p class="mb-0">{{ result.llm_explanation }}</p>
-                </div>
+            {% if result.wiki_links and result.wiki_links[0] != "No relevant Wikipedia articles found." %}
+            <p><strong>Learn More:</strong></p>
+            <ul>
+                {% for link in result.wiki_links %}
+                    <li><a class="icon-link icon-link-hover link-underline-opacity-25 d-flex align-items-center" href="{{ link['url'] }}" target="_blank">Wikipedia: {{ link['title'] }} <i class="bi bi-box-arrow-up-right ms-1"></i></a></li>
+                {% endfor %}
+            </ul>
             {% endif %}
         </div>
         {% endfor %}

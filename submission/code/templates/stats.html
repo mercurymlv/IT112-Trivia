@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+
+{% block title %}Trivia! - Stats{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    {% if user_id %}
+        <h1 class="text-center">Your Trivia Stats</h1>
+    {% else %}
+        <h1 class="text-center">General Population Stats</h1>
+        <p class="text-center">
+            <a href="{{ url_for('signup') }}">Sign up</a> to save your stats!
+        </p>
+    {% endif %}
+
+    <div class="row mt-4">
+        <!-- Total Games Played -->
+        <div class="col-md-4">
+            <div class="card text-white bg-primary mb-3 text-center">
+                <div class="card-body">
+                    <h5 class="card-title">Total Games Played</h5>
+                    <p class="display-4">{{ total_games }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Total Correct Answers -->
+        <div class="col-md-4">
+            <div class="card text-white bg-success mb-3 text-center">
+                <div class="card-body">
+                    <h5 class="card-title">Total Correct Answers</h5>
+                    <p class="display-4">{{ total_correct }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Accuracy Percentage -->
+        <div class="col-md-4">
+            <div class="card text-white bg-info mb-3 text-center">
+                <div class="card-body">
+                    <h5 class="card-title">Accuracy</h5>
+                    <p class="display-4">
+                        {% if total_correct and total_games > 0 %}
+                            {{ ((total_correct / (total_games * 3)) * 100) | round(1) }}%
+                        {% else %}
+                            0%
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Accuracy by Age Group Chart -->
+    <div class="mt-5">
+        <h3 class="text-center">Accuracy by Age Group</h3>
+        <canvas id="accuracyChart"></canvas>
+    </div>
+</div>
+
+
+<!-- Chart.js stuff -->
+<script>
+    var ageGroups = {{ age_groups | tojson }};
+    var accuracyRates = {{ accuracy_rates | tojson }};
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    var ctx = document.getElementById('accuracyChart').getContext('2d');
+    var accuracyChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ageGroups,
+            datasets: [{
+                label: 'Accuracy (%)',
+                data: accuracyRates,
+                backgroundColor: ['#007bff', '#28a745', '#dc3545', '#ffc107'],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100,
+                    ticks: {
+                        callback: function(value) {
+                            return value + "%";
+                        }
+                    }
+                }
+            }
+        }
+    });
+</script>
+
+
+
+{% endblock %}
+
