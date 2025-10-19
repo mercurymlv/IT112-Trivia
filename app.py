@@ -15,13 +15,21 @@ from dotenv import load_dotenv
 
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = secrets.token_hex(16)
+# app.config['SECRET_KEY'] = secrets.token_hex(16)
 
 
 # Load some variable values
 load_dotenv()  # loads .env file contents into os.environ
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+app.config['SECRET_KEY'] = os.getenv("SECRET_KEY")
 
+
+# Set secure session cookie settings
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SECURE=True,      # only over HTTPS
+    SESSION_COOKIE_SAMESITE='Lax'
+)
 
 # I had a hard time making the number of questions dynamic - just hard-coding for now
 num_questions = 3
@@ -85,34 +93,9 @@ def load_questions():
 def get_random_questions():
     questions = load_questions()
 
-    print(questions)
-    print(type(questions))
-
     return random.sample(questions, num_questions)
 
 
-# # Search Wikipedia for articles about the questions subject matter
-# def search_wikipedia(query):
-#     url = "https://en.wikipedia.org/w/api.php"
-#     params = {
-#         "action": "query",
-#         "list": "search",
-#         "srsearch": query,
-#         "format": "json"
-#     }
-#     response = requests.get(url, params=params)
-    
-#     if response.status_code == 200:
-#         results = response.json().get("query", {}).get("search", [])
-#         if results:
-#             return [
-#                 {"title": result['title'], "url": f"https://en.wikipedia.org/wiki/{result['title'].replace(' ', '_')}"}
-#                 for result in results[:2]  # Get top 2 results
-#             ]
-#     return [{"title": "No relevant Wikipedia articles found", "url": "#"}]
-
-
-# Provide answer feedback from a chatbot
 def get_llm_interpretation(question, user_answer, correct_answer):
     url = "https://openrouter.ai/api/v1/chat/completions"
     headers = {
@@ -120,7 +103,6 @@ def get_llm_interpretation(question, user_answer, correct_answer):
         "HTTP-Referer": "matthewvaldez.com",
         "X-Title": "TriviaAppTest",
     }
-
 
     # Determine if we should ask for "what they may have been thinking"
     if user_answer == correct_answer:
@@ -142,22 +124,17 @@ def get_llm_interpretation(question, user_answer, correct_answer):
                 - Why the correct answer is correct.
                 - {extra_instruction}
                 - Keep it concise and polite.
-                                """
+                """
             }
         ],
         "temperature": 0.7,
         "max_tokens": 150
     }
 
-    response = requests.post(url, headers=headers, data=json.dumps(payload))
-    data = response.json()
-    return data["choices"][0]["message"]["content"]
-
     try:
         response = requests.post(url, headers=headers, json=payload)
         data = response.json()
 
-        # Safe access
         if "choices" in data and len(data["choices"]) > 0:
             return data["choices"][0]["message"]["content"].strip()
         else:
@@ -165,8 +142,6 @@ def get_llm_interpretation(question, user_answer, correct_answer):
 
     except Exception as e:
         return f"Error calling OpenRouter API: {str(e)}"
-
-
 
 # WTF form to display the trivia questions and collect answers
 class TriviaForm(FlaskForm):
@@ -548,4 +523,4 @@ def sub_confirmation():
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run()
