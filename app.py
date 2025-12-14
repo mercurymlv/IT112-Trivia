@@ -12,7 +12,6 @@ import time
 import os
 from dotenv import load_dotenv
 
-
 app = Flask(__name__)
 # app.config['SECRET_KEY'] = secrets.token_hex(16)
 
