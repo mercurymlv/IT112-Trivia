@@ -4,7 +4,6 @@ from wtforms import StringField, SubmitField, DateField, EmailField, SelectField
 from wtforms.validators import DataRequired, Length, Email, EqualTo, Optional
 from datetime import date, datetime
 import random
-import secrets
 import json
 import sqlite3
 from werkzeug.security import generate_password_hash, check_password_hash
