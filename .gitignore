@@ -12,9 +12,12 @@ instance/
 
 # Ignore VS Code settings (if using VS Code)
 .vscode/
+.DS_Store
 
 # Ignore environment variables (if using a .env file)
 .env
+.env.*
+*.env
 
 # Ignore compiled files
 *.log
@@ -22,5 +25,5 @@ instance/
 # Draw.io backup
 *.bkp
 
-# don't backup database files - change too freq
+# don't backup database files
 *.db
