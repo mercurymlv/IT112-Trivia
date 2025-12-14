@@ -19,10 +19,14 @@ app = Flask(__name__)
 
 
 # Load some variable values
-load_dotenv()  # loads .env file contents into os.environ
+
+# set up path for the env stuff, ENV_PATH will be on the server, local dev will use default
+env_path = os.environ.get("ENV_PATH", "../config/env/trivia_app.env")
+load_dotenv(env_path)
+
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 app.config['SECRET_KEY'] = os.getenv("SECRET_KEY")
-
+TRIVIA_DB_PATH = os.getenv("TRIVIA_DB_PATH", "../db/trivia.db")
 
 # Set secure session cookie settings
 app.config.update(
@@ -64,9 +68,14 @@ class UserSetupForm(FlaskForm):
     submit = SubmitField('Sign Up for Trivia!')
 
 
+# Set up a connection function to the SQLite DB
+def get_db_connection():
+    conn = sqlite3.connect(TRIVIA_DB_PATH)
+    return conn
+
 # Load all qustions from the SQlite DB
 def load_questions():
-    conn = sqlite3.connect('trivia.db')
+    conn = get_db_connection()
     cursor = conn.cursor()
 
     # load and fetch all questions that are verfied (i.e. user-submitted questions need to be checked first)
@@ -176,7 +185,7 @@ def index():
         password = form.password.data
 
         # get username and password from db
-        conn = sqlite3.connect('trivia.db')
+        conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute('SELECT user_id, username, password FROM User WHERE username = ?', (username,))
         user = cursor.fetchone()
@@ -207,7 +216,7 @@ def signup():
         password = form.password.data
         gender = form.gender.data
 
-        conn = sqlite3.connect('trivia.db')
+        conn = get_db_connection()
         cursor = conn.cursor()
 
         # Insert user data - encrypt the password
@@ -259,7 +268,7 @@ def trivia():
 
     if user_id:  # Only store games for registered users, not guests
         if 'game_id' not in session:
-            conn = sqlite3.connect('trivia.db')
+            conn = get_db_connection()
             cursor = conn.cursor()
 
             cursor.execute("INSERT INTO game_header (user_id, status) VALUES (?, ?)", 
@@ -326,7 +335,7 @@ def results():
     score = 0
     results_data = []  # Store each question, correct answer, and user answer
 
-    conn = sqlite3.connect('trivia.db')
+    conn = get_db_connection()
     cursor = conn.cursor()
 
 
@@ -400,7 +409,7 @@ def results():
 def stats():
     user_id = session.get('user_id')
 
-    conn = sqlite3.connect("trivia.db")
+    conn = get_db_connection()
     cursor = conn.cursor()
 
     # Single query to get both total games and total correct
@@ -501,7 +510,7 @@ def contribute():
 
         # Insert into database
         # verified is 0 by default - need review first
-        conn = sqlite3.connect('trivia.db')
+        conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute('''
             INSERT INTO Questions (quest_type, quest_text, quest_ans, options, verified, sub_user, sub_date) 
