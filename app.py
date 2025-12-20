@@ -113,9 +113,9 @@ def get_llm_interpretation(question, user_answer, correct_answer):
 
     # Determine if we should ask for "what they may have been thinking"
     if user_answer == correct_answer:
-        extra_instruction = "Since the user's answer is correct, you do not need to speculate on incorrect answers."
+        extra_instruction = "The user's answer is correct, explain why and offer interesting background."
     else:
-        extra_instruction = "If the user's answer is wrong, briefly mention what they may have been thinking."
+        extra_instruction = "The user's answer is wrong, briefly mention what they may have been thinking."
 
     payload = {
         "model": "openai/gpt-oss-20b:free",
