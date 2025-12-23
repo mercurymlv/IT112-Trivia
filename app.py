@@ -108,30 +108,29 @@ def get_llm_interpretation(question, user_answer, correct_answer):
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
         "HTTP-Referer": "matthewvaldez.com",
-        "X-Title": "TriviaAppTest",
-    }
+        "X-Title": "TriviaAppTest",    }
 
-    # Determine if we should ask for "what they may have been thinking"
-    if user_answer == correct_answer:
-        extra_instruction = "The user's answer is correct, explain why and offer interesting background."
-    else:
-        extra_instruction = "The user's answer is wrong, briefly mention what they may have been thinking."
+    # # Determine if we should ask for "what they may have been thinking"
+    # if user_answer == correct_answer:
+    #     extra_instruction = "The user's answer is correct, offer interesting, concise, anecdote."
+    # else:
+    #     extra_instruction = "The user's answer is wrong, briefly mention what they may have been thinking."
 
     payload = {
         "model": "openai/gpt-oss-20b:free",
         "messages": [
             {
+                "role": "system",
+                "content": "You are a helpful trivia robot. Be friendly, concise, and educational."
+            },
+            {
                 "role": "user",
-                "content": f"""
-                Trivia question: {question}
-                User's answer: {user_answer}
-                Correct answer: {correct_answer}
-
-                Please give a friendly explanation:
-                - Why the correct answer is correct.
-                - {extra_instruction}
-                - Keep it concise and polite.
-                """
+                "content": (
+                    f"Question: {question}. "
+                    f"User answer: {user_answer}. "
+                    f"Correct answer: {correct_answer}. "
+                    f"Add additional notes if correct, if incorrect explain what the user may have been thinking. Explain naturally, without using Markdown or asterisks"
+                )
             }
         ],
         "temperature": 0.7,
