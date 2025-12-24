@@ -7,7 +7,7 @@
     <h1 class="mb-4">Hello, {{ username | title }}! Let's Play Trivia 🎉</h1>
     <p>Answer the questions below:</p>
 
-    <form method="POST">
+    <form method="POST" onsubmit="showLoading()">
         {{ form.hidden_tag() }}
 
         {% for field in [form.question_1, form.question_2, form.question_3] %}
@@ -25,9 +25,19 @@
         {% endfor %}
 
         <div class="text-center">
-            <button type="submit" class="btn btn-primary btn-lg"><i class="bi bi-pencil-fill"></i> Submit Answers</button>
+            <button id="submit-btn" type="submit" class="btn btn-primary btn-lg"><i class="bi bi-pencil-fill"></i> Submit Answers</button>
+            <button id="loading-btn" class="btn btn-primary btn-lg" type="button" disabled style="display:none;">
+                <span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>
+                    <i class="bi bi-calculator-fill"></i> Checking answers...
+            </button>
         </div>
     </form>
 
 </div>
+<script>
+function showLoading() {
+  document.getElementById("submit-btn").style.display = "none";
+  document.getElementById("loading-btn").style.display = "inline-block";
+}
+</script>
 {% endblock %}
