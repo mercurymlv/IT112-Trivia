@@ -103,51 +103,88 @@ def get_random_questions():
     return random.sample(questions, num_questions)
 
 
+# default commentary if LLM fails
+def basic_fallback(user_answer, correct_answer):
+    if user_answer == correct_answer:
+        return "Yes, this is correct!"
+    else:
+        return "Sorry, this is not the correct answer."
+
 def get_llm_interpretation(question, user_answer, correct_answer):
     url = "https://openrouter.ai/api/v1/chat/completions"
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-        "HTTP-Referer": "matthewvaldez.com",
-        "X-Title": "TriviaAppTest",    }
-
-    # # Determine if we should ask for "what they may have been thinking"
-    # if user_answer == correct_answer:
-    #     extra_instruction = "The user's answer is correct, offer interesting, concise, anecdote."
-    # else:
-    #     extra_instruction = "The user's answer is wrong, briefly mention what they may have been thinking."
+        "HTTP-Referer": "https://mlv888.pythonanywhere.com",
+        "X-Title": "TriviaAppTest",
+        "Content-Type": "application/json",
+    }
 
     payload = {
-        "model": "openai/gpt-oss-20b:free",
+        "model": "allenai/olmo-3.1-32b-think:free",
         "messages": [
             {
                 "role": "system",
-                "content": "You are a helpful trivia robot. Be friendly, concise, and educational."
+                "content": (
+                    "You are a friendly trivia assistant. "
+                    "Respond in a natural, conversational tone with proper grammar and capitalization. "
+                    "Do not use markdown or asterisks."
+                )
             },
             {
                 "role": "user",
                 "content": (
-                    f"Question: {question}. "
-                    f"User answer: {user_answer}. "
-                    f"Correct answer: {correct_answer}. "
-                    f"Add additional notes if correct, if incorrect explain what the user may have been thinking. Explain naturally, without using Markdown or asterisks"
+                    f"Question: {question}\n"
+                    f"User answer: {user_answer}\n"
+                    f"Correct answer: {correct_answer}\n\n"
+                    "If the answer is correct, briefly say why it is correct. "
+                    "If it is incorrect, briefly explain what the user may have been thinking."
                 )
             }
         ],
         "temperature": 0.7,
-        "max_tokens": 150
+        "max_output_tokens": 120,
+        "stream": True
     }
 
     try:
-        response = requests.post(url, headers=headers, json=payload)
-        data = response.json()
+        response = requests.post(
+            url,
+            headers=headers,
+            json=payload,
+            stream=True,
+            timeout=30
+        )
 
-        if "choices" in data and len(data["choices"]) > 0:
-            return data["choices"][0]["message"]["content"].strip()
-        else:
-            return f"Unexpected response format: {data}"
+        output = ""
 
-    except Exception as e:
-        return f"Error calling OpenRouter API: {str(e)}"
+        for line in response.iter_lines(decode_unicode=True):
+            if not line:
+                continue
+
+            if line.startswith("data: "):
+                data = line[6:]
+
+                if data == "[DONE]":
+                    break
+
+                try:
+                    chunk = json.loads(data)
+                    delta = chunk["choices"][0].get("delta", {})
+                    text = delta.get("content")
+                    if text:
+                        output += text
+                except Exception:
+                    pass  # ignore malformed chunks
+
+        output = output.strip()
+
+        if not output:
+            return basic_fallback(user_answer, correct_answer)
+
+        return output.replace("*", "")
+
+    except Exception:
+        return basic_fallback(user_answer, correct_answer)
 
 # WTF form to display the trivia questions and collect answers
 class TriviaForm(FlaskForm):
